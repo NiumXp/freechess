@@ -182,8 +182,10 @@ async function drawBoard(fen: string) {
         );
     }
 
+    const previousMove = reportResults?.positions[currentMoveIndex - 1];
     // Draw engine suggestion arrows
-    if ($<HTMLInputElement>("#suggestion-arrows-setting").get(0)?.checked) {
+    if (!!previousMove && canDrawArrows()) {
+        console.log(previousMove, lastMove);
         let arrowAttributes = [
             {
                 width: 35,
@@ -194,28 +196,42 @@ async function drawBoard(fen: string) {
                 opacity: 0.55
             }
         ];
-        
+
         let topLineIndex = -1;
-        for (let topLine of lastMove?.topLines ?? []) {
+        for (let topLine of previousMove.topLines ?? []) {
             topLineIndex++;
-    
-            let from = getBoardCoordinates(topLine.moveUCI.slice(0, 2));
-            let to = getBoardCoordinates(topLine.moveUCI.slice(2, 4));
-    
-            let arrow = drawArrow(
-                from.x * (BOARD_SIZE / 8) + (BOARD_SIZE / 16), 
-                from.y * (BOARD_SIZE / 8) + (BOARD_SIZE / 16), 
-                to.x * (BOARD_SIZE / 8) + (BOARD_SIZE / 16), 
-                to.y * (BOARD_SIZE / 8) + (BOARD_SIZE / 16), 
-                arrowAttributes[topLineIndex].width
-            );
-            if (!arrow) continue;
-    
-            ctx.globalAlpha = arrowAttributes[topLineIndex].opacity;
-            ctx.drawImage(arrow, 0, 0);
-            ctx.globalAlpha = 1;
+
+            const { width, opacity } = arrowAttributes[topLineIndex];
+            const coordinates = uciToCoordinates(topLine.moveUCI);
+            drawMoveArrow(coordinates, width, opacity);
         }
     }
+}
+
+function canDrawArrows(): boolean {
+    return $<HTMLInputElement>("#suggestion-arrows-setting").get(0)?.checked ?? false;
+}
+
+function drawMoveArrow([from, to]: [Coordinate, Coordinate], width: number, opacity: number) {
+    let arrow = drawArrow(
+        from.x * (BOARD_SIZE / 8) + (BOARD_SIZE / 16),
+        from.y * (BOARD_SIZE / 8) + (BOARD_SIZE / 16),
+        to.x * (BOARD_SIZE / 8) + (BOARD_SIZE / 16),
+        to.y * (BOARD_SIZE / 8) + (BOARD_SIZE / 16),
+        width,
+    );
+    if (!arrow)
+        return;
+    ctx.globalAlpha = opacity;
+    ctx.drawImage(arrow, 0, 0);
+    ctx.globalAlpha = 1;
+}
+
+function uciToCoordinates(uci: string): [Coordinate, Coordinate] {
+    return [
+        getBoardCoordinates(uci.slice(0, 2)),
+        getBoardCoordinates(uci.slice(2, 4)),
+    ];
 }
 
 function updateBoardPlayers() {
